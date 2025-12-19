@@ -1068,7 +1068,7 @@
                 html += '</table>';
                 document.getElementById('rank-content').innerHTML = html;
             } catch (e) { document.getElementById('rank-content').innerText = "获取失败，服务器未响应"; }
-        }
+        },
 
         smartBtn: function(txt, costT, costS, cb, costM = 0) {
             const p = StateManager.data.player; 
@@ -1129,13 +1129,11 @@
 
         init: function() {
             this.resetStats();
-            // 插入荣誉室按钮
-            const achBtn = document.createElement('button');
-            achBtn.className = 'btn';
-            achBtn.style.marginBottom = '20px';
-            achBtn.innerText = "🏆 查看荣誉室";
-            achBtn.onclick = () => UI.showAchievements();
-
+            
+            // [修正位置] 先获取 DOM 元素
+            const setupScreen = document.getElementById('screen-setup');
+            
+            // 插入排行榜按钮
             const rankBtn = document.createElement('button');
             rankBtn.className = 'btn';
             rankBtn.style.width = '100%';
@@ -1143,13 +1141,16 @@
             rankBtn.innerText = "🌐 全球排行榜";
             rankBtn.onclick = () => UI.showCloudRank();
             setupScreen.prepend(rankBtn);
-            
-            // 防止重复插入
-            const setupScreen = document.getElementById('screen-setup');
-            if (!setupScreen.querySelector('button[innerText="🏆 查看荣誉室"]')) {
-                setupScreen.prepend(achBtn);
-            }
 
+            // 插入荣誉室按钮
+            const achBtn = document.createElement('button');
+            achBtn.className = 'btn';
+            achBtn.style.width = '100%'; // 加上宽度一致
+            achBtn.style.marginBottom = '20px';
+            achBtn.innerText = "🏆 查看荣誉室";
+            achBtn.onclick = () => UI.showAchievements();
+            setupScreen.prepend(achBtn);
+            
             if (StateManager.hasSave()) {
                 const loadBtn = document.createElement('button');
                 loadBtn.className = 'btn';
