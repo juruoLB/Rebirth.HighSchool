@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>REBIRTH_HIGHSCHOOL_V5.5.1</title>
+    <style>
+        /* ==================== GLOBAL THEME ==================== */
+        /* [V5.5.1 FIX] 强制保留滚动条轨道，防止页面宽度跳动 */
+        html {
+            overflow-y: scroll; 
+        }
+        :root {
+            --bg: #000000;
+            --fg: #e0e0e0;
+            --highlight: #ffffff;
+            --accent: #ffffff;
+            --border: 2px solid #ffffff;
+            --dim: #666666;
+            --font: 'Consolas', 'Courier New', monospace;
+        }
+
+        body {
+            background-color: var(--bg); color: var(--fg); font-family: var(--font);
+            margin: 0; padding: 0; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* 通用：故障文字特效 */
+        .glitch {
+            position: relative; animation: glitch 1s infinite alternate;
+            text-shadow: 2px 2px 0px #333; font-weight: bold; letter-spacing: 2px;
+        }
+        @keyframes glitch {
+            0% { text-shadow: 2px 2px 0px #333; }
+            100% { text-shadow: -2px -2px 0px #333; }
+        }
+
+        /* 通用：隐藏类 */
+        .hidden { display: none !important; }
+        
+        /* 通用：硬核按钮 */
+        .btn {
+            background: black; color: white; border: 2px solid white;
+            padding: 10px 20px; font-family: inherit; font-weight: bold; cursor: pointer;
+            text-transform: uppercase; transition: all 0.1s; margin: 5px;
+        }
+        .btn:hover:not(:disabled) { background: white; color: black; }
+        .btn:disabled { border-color: #444; color: #444; cursor: not-allowed; }
+
+        /* ==================== SCREEN 1: SETUP (复刻您的最爱) ==================== */
+        #screen-setup {
+            width: 100%; max-width: 700px; height: 90vh;
+            border: var(--border); padding: 30px; box-sizing: border-box;
+            background: #050505; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 20px;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        .form-group label { display: block; margin-bottom: 8px; color: var(--highlight); }
+        input[type="text"] {
+            background: transparent; border: none; border-bottom: 2px solid white;
+            color: white; font-family: inherit; font-size: 1.2rem; width: 100%; outline: none;
+        }
+        
+        /* 选科 Grid */
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .option-box {
+            border: 1px solid #444; padding: 15px; text-align: center; cursor: pointer; user-select: none;
+        }
+        .option-box.selected, .option-box.active {
+            background: white; color: black; border-color: white; font-weight: bold;
+        }
+
+        /* 属性加点器 */
+        .stat-allocator { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding: 5px 0; }
+
+        /* ==================== SCREEN 2: GAMEPLAY (仪表盘) ==================== */
+        #screen-game {
+            width: 100%; height: 100%; display: flex; gap: 10px; padding: 10px; box-sizing: border-box;
+        }
+        
+        .panel { 
+            border: 1px solid #333; background: #0a0a0a; padding: 10px; 
+            display: flex; flex-direction: column;
+        }
+        
+        /* 左侧状态 (30%) */
+        #col-stats { flex: 3; }
+        /* 中间日志 (40%) */
+        #col-main { flex: 4; border-color: #666; } /* 主屏边框亮一点 */
+        /* 右侧操作 (30%) */
+        #col-action { flex: 3; }
+
+        .stat-bar { margin-bottom: 12px; }
+        .progress-track { background: #222; height: 10px; border: 1px solid #444; margin-top: 4px; }
+        .progress-fill { height: 100%; background: #fff; width: 50%; transition: width 0.3s; }
+        
+        /*#game-log { 
+            flex: 1; overflow-y: auto; font-size: 0.9rem; line-height: 1.4; 
+            border-top: 1px dashed #333; margin-top: 10px; padding-top: 10px;
+        }*/
+        #game-log {
+            /* 兼容 Webkit 浏览器 (Chrome/Safari) */
+            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+            /* 标准语法 */
+            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        }
+
+        /* [NEW] 打字机光标闪烁 */
+        .cursor::after {
+            content: '|';
+            display: inline-block;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            color: #2ecc71; /* 光标设为绿色，像老式终端 */
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        /* 标语容器样式 */
+        #slogan-box {
+            margin-top: auto; /* 推到底部 */
+            padding-top: 20px;
+            border-top: 1px solid #333;
+            font-family: 'SimSun', 'Songti SC', serif; /* 宋体更有学校标语的感觉 */
+            font-size: 0.9rem;
+            color: #aaa;
+            min-height: 60px; /* 预留高度防止跳动 */
+            line-height: 1.5;
+            font-style: italic;
+        }
+        .log-entry { margin-bottom: 5px; }
+        .log-turn { color: #888; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <!-- [NEW] 动态粒子背景画布 -->
+    <canvas id="particle-canvas" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; pointer-events:none;"></canvas>
+
+    <!-- 原有的游戏容器 -->
+    <div id="game-container">
+        ...
+    <!-- SCREEN 1: 启动协议 -->
+    <div id="screen-setup">
+        <h1 class="glitch">> REBIRTH_PROTOCOL.EXE</h1>
+        <!-- 在 <h1 class="glitch">...</h1> 之后插入以下代码 -->
+
+        <div style="font-size: 0.7rem; color: #666; margin: -15px 0 20px 0; border-left: 3px solid #666; padding-left: 10px; line-height: 1.4;">
+        <strong>[免责声明]</strong> 本程序为虚构的教学与娱乐模拟系统。
+        <br>所有训练参数、成绩算法、资源分配模型均为玩法设定。
+        <br>涉及的人名、地名、事件均为随机生成或艺术加工，与现实世界无任何关联。
+        </div>
+        
+        <div class="form-group">
+            <label>> 宿主代号 (ID):</label>
+            <input type="text" id="inp-name" value="Player1" maxlength="8">
+        </div>
+
+        <div class="form-group">
+            <label>> 世界线难度:</label>
+            <div class="grid-3" id="diff-select">
+                <!-- JS 生成 -->
+            </div>
+            <p id="diff-desc" style="font-size: 0.8rem; color: #888; margin-top:5px;"></p>
+        </div>
+
+        <div class="form-group">
+            <label>> 高考选科 (3+3 / 已选: <span id="sub-count">0</span>/3):</label>
+            <div class="grid-3" id="sub-select">
+                <!-- JS 生成 -->
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>> 初始天赋分配 (剩余点数: <span id="remain-pts">0</span>):</label>
+            <div id="stat-select">
+                <!-- JS 生成 -->
+            </div>
+        </div>
+
+        <div style="margin-top: auto;">
+            <button id="btn-start" class="btn" style="width:100%" disabled>系统校准中...</button>
+            <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: #666;">
+                <span id="load-status">ARCHIVE_NOT_FOUND</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: 命运主宰 -->
+    <div id="screen-game" class="hidden">
+        <!-- 左侧：状态监控 -->
+        <div id="col-stats" class="panel">
+            <h3 style="border-bottom: 2px solid white; padding-bottom:5px; margin-top:0;">STATUS</h3>
+            <div id="ui-stats-container">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 中间：核心显示 -->
+        <div id="col-main" class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin:0;">SYSTEM_LOG</h3>
+                <span id="ui-turn" style="background: white; color: black; padding: 2px 6px; font-weight: bold;">TURN 1/48</span>
+            </div>
+            <div style="border-bottom: 1px solid #333; margin: 10px 0; padding-bottom: 5px; text-align: center;">
+                <span id="ui-school">LOADING...</span> | 距离高考 <span id="ui-countdown">48</span> 周
+            </div>
+            <div id="game-log">
+                <!-- 日志流 -->
+            </div>
+        </div>
+
+        <!-- 右侧：控制台 -->
+        <div id="col-action" class="panel">
+            <h3 style="border-bottom: 2px solid white; padding-bottom:5px; margin-top:0;">COMMANDS</h3>
+            <button class="btn" onclick="Game.saveGame()">💾 手动存档</button>
+            <hr style="border: 0; border-top: 1px dashed #333; margin: 15px 0;">
+            <div id="ui-actions">
+                <!-- 动态生成操作按钮 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 逻辑脚本 -->
+    <script>
+/* =================================================================
+       REBIRTH HIGHSCHOOL V5.5.2 (UNCOMPRESSED FINAL)
+       ================================================================= */
+    
+        /* =================================================================
+   CLOUDSYNC MODULE (NEW v6.0)
+   ================================================================= */
+    const CloudSync = {
+        // 拦截分享链接
+        checkShareMode: async function() {
+            const params = new URLSearchParams(window.location.search);
+            const sid = params.get('shareId');
+            if (sid) {
+                try {
+                    const res = await fetch(`/api/share/${sid}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.renderShareCard(data);
+                        return true; // 拦截成功
+                    }
+                } catch (e) { console.error("Cloud Error"); }
+            }
+            return false;
+        },
+
+        // 渲染战报覆盖层
+        renderShareCard: function(data) {
+            document.body.innerHTML = `
+                <div style="background:#000; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:monospace; text-align:center; border:5px double #ffd700;">
+                    <h1 class="glitch" style="color:#ffd700;">🏆 重生者荣誉战报</h1>
+                    <div style="font-size:1.2rem; margin:20px; line-height:2; border-top:1px dashed #444; border-bottom:1px dashed #444; padding:20px;">
+                        <p>宿主代号：<span style="color:#2ecc71">${data.name}</span></p>
+                        <p>高考总分：<span style="color:#f1c40f">${data.score}</span></p>
+                        <p>录取院校：<span style="color:#3498db">${data.uni}</span></p>
+                        <p>结局：${data.ending}</p>
+                    </div>
+                    <button class="btn" onclick="window.location.href='/'">我也要重生</button>
+                </div>
+            `;
+        }
+    };   
+
+    /* -----------------------------------------------------------------
+       MODULE 1: GAME CONFIG (配置数据库)
+       ----------------------------------------------------------------- */
+    const GameConfig = {
+        MAX_TURNS: 48,
+        TIME_PER_TURN: 300,
+        
+        Difficulty: {
+            easy: { 
+                name: "爽文 (Easy)", 
+                points: 25, 
+                money: 3000, 
+                desc: "资源充沛，适合体验剧情。" 
+            },
+            normal: { 
+                name: "现实 (Normal)", 
+                points: 20, 
+                money: 800, 
+                desc: "标准难度，不仅要努力，还要看运气。" 
+            },
+            hard: { 
+                name: "地狱 (Hard)", 
+                points: 15, 
+                money: 0, 
+                desc: "天崩开局，负重前行。" 
+            }
+        },
+
+        Schools: {
+            ordinary: {
+                relaxed: { name: "县城四中", buff: "放羊", eff: 0.8, stress: 0, minScore: 400 },
+                balanced: { name: "县城二中", buff: "平庸", eff: 0.9, stress: 5, minScore: 450 },
+                strict: { name: "毛坦厂分校", buff: "题海", eff: 1.1, stress: 15, minScore: 480 }
+            },
+            key: {
+                relaxed: { name: "市实验(素质班)", buff: "全能", eff: 1.0, stress: 5, minScore: 500 },
+                balanced: { name: "市一中", buff: "名师", eff: 1.1, stress: 10, minScore: 550 },
+                strict: { name: "宏志班", buff: "高压", eff: 1.3, stress: 20, minScore: 580 }
+            },
+            super: {
+                relaxed: { name: "复旦附中", buff: "神仙", eff: 1.2, stress: 8, minScore: 600 },
+                balanced: { name: "学军中学", buff: "竞赛", eff: 1.4, stress: 15, minScore: 630 },
+                strict: { name: "衡水总校", buff: "机器", eff: 1.6, stress: 30, minScore: 660 }
+            }
+        },
+
+        Stats: {
+            iq: { name: "智力", base: 5 },
+            logic: { name: "逻辑", base: 1 },
+            img: { name: "想象", base: 1 },
+            mem: { name: "记忆", base: 1 },
+            sta: { name: "体魄", base: 5 },
+            fam: { name: "家境", base: 5 }
+        },
+
+        Subjects: {
+            chn: { name: "语文", type: "core", boost: "img", costT: 40, costS: 20 },
+            math: { name: "数学", type: "core", boost: "logic", costT: 45, costS: 25 },
+            eng: { name: "英语", type: "core", boost: "mem", costT: 40, costS: 20 },
+            phy: { name: "物理", type: "sci", boost: "logic", costT: 35, costS: 25 },
+            chem: { name: "化学", type: "sci", boost: "mem", costT: 35, costS: 22 },
+            bio: { name: "生物", type: "sci", boost: "mem", costT: 35, costS: 20 },
+            his: { name: "历史", type: "arts", boost: "mem", costT: 40, costS: 18 },
+            pol: { name: "政治", type: "arts", boost: "img", costT: 40, costS: 18 },
+            geo: { name: "地理", type: "arts", boost: "logic", costT: 35, costS: 20 }
+        },
+
+        Calendar: {
+            holidays: [8, 15, 16, 24, 31, 32, 40],
+            exams: [3, 7, 11, 14, 19, 23, 27, 30, 35, 39, 42, 45, 47, 48],
+            getDesc: function(turn) {
+                if (turn === 8) return "【高一寒假】";
+                if (turn === 15 || turn === 16) return "【高一暑假】";
+                if (turn === 24) return "【高二寒假】";
+                if (turn === 31 || turn === 32) return "【高二暑假】";
+                if (turn === 40) return "【高三寒假】";
+                if (turn === 42) return "【一模】";
+                if (turn === 45) return "【二模】";
+                if (turn === 47) return "【三模】";
+                if (turn === 48) return "【高考】";
+                return "";
+            }
+        },
+
+        CompetitionSchedule: {
+            3: { stage: 1, name: "S1初赛(高一)", req: 40 },
+            7: { stage: 2, name: "S2复赛(高一)", req: 120 },
+            12: { stage: 3, name: "NOIP省选(高一)", req: 250 },
+            16: { stage: 4, name: "NOI国赛(高一)", req: 500 },
+            19: { stage: 1, name: "S1初赛(高二)", req: 80 },
+            23: { stage: 2, name: "S2复赛(高二)", req: 200 },
+            28: { stage: 3, name: "NOIP省选(高二)", req: 400 },
+            32: { stage: 4, name: "NOI国赛(高二)", req: 700 },
+            35: { stage: 1, name: "S1初赛(高三)", req: 150 },
+            39: { stage: 2, name: "S2复赛(高三)", req: 300 }
+        },
+
+        NPCs: [
+            { 
+                id: "xiao", name: "萧火火", gender: "M", desc: "莫欺少年穷", 
+                condition: (p) => p.stats.stress > 60, 
+                cost: { t: 50, s: 15, m: 0 }, 
+                effect: (p) => { 
+                    p.stats.stress -= 20; 
+                    p.stats.satisfaction += 2; 
+                    return "听萧火火吐槽了一小时，心情舒畅。"; 
+                } 
+            },
+            { 
+                id: "anon", name: "千早爱音", gender: "F", desc: "爱慕虚荣的JK", 
+                condition: (p) => p.stats.money > 200, 
+                cost: { t: 100, s: 10, m: 200 }, 
+                effect: (p) => { 
+                    p.stats.charm += 2; 
+                    p.stats.stress -= 40; 
+                    return "陪爱音逛遍了商场，时间飞逝。"; 
+                } 
+            },
+            { 
+                id: "night", name: "神夜月", gender: "M", desc: "苹果天才", 
+                condition: (p) => p.stats.iq > 8, 
+                cost: { t: 30, s: 30, m: 0 }, 
+                effect: (p) => { 
+                    p.stats.logic += 2; 
+                    p.stats.stress += 5; 
+                    return "神夜月指出了你公式的错误。"; 
+                } 
+            },
+            { 
+                id: "misaka", name: "御坂美琴", gender: "F", desc: "超电磁炮", 
+                condition: (p) => p.subjects.includes('phy') && p.stats.logic > 15, 
+                cost: { t: 60, s: 35, m: 0 }, 
+                effect: (p) => { 
+                    p.stats.logic += 3; 
+                    p.stats.satisfaction += 5; 
+                    return "放学后一起做实验。"; 
+                } 
+            }
+        ],
+
+        UniversityList: {
+            tier9: { name: "清北 (TOP2)", list: ["清华大学", "北京大学"] },
+            tier8: { name: "华五人 (TOP3-8)", list: ["复旦大学", "上海交通大学", "浙江大学", "南京大学", "中国科学技术大学", "中国人民大学"] },
+            tier7: { name: "中坚九校", list: ["同济大学", "华中科技大学", "武汉大学", "哈尔滨工业大学", "西安交通大学", "北京航空航天大学"] },
+            tier6: { name: "强势211/985", list: ["西安电子科技大学", "东北大学", "吉林大学", "四川大学", "华南理工大学"] },
+            tier5: { name: "普通211", list: ["安徽大学", "苏州大学", "上海大学", "南昌大学", "郑州大学"] },
+            tier4: { name: "一本院校", list: ["江苏大学", "深圳大学", "浙江工业大学", "南京邮电大学"] },
+            tier3: { name: "二本院校", list: ["xx理工学院", "xx科技学院", "xx师范学院"] },
+            tier2: { name: "民办/大专", list: ["家里蹲职业技术学院", "xx职业学院", "民办三本"] },
+            tier1: { name: "落榜", list: ["社会大学 (打工)", "复读班"] }
+        },
+
+        Endings: {
+            BE1: { title: "心理崩溃", desc: "还没撑到高考，你的精神就已经断了弦。休学治疗或许是最好的选择。", color: "#7f8c8d" },
+            BE2: { title: "迷惘结局", desc: "高考名落孙山，看着空荡荡的录取查询页面，你不知道未来在何方。", color: "#95a5a6" },
+            NE: { title: "平淡结局", desc: "考上了一所普通的大学，过着普通的生活。这或许就是大多数人的归宿。", color: "#bdc3c7" },
+            GE1: { title: "战斗结局", desc: "你在高压下浴火重生！虽然过程痛苦，但你赢得了强校的入场券！", color: "#e67e22" },
+            GE2: { title: "逆袭结局", desc: "曾被老师和家长放弃的你，在最后一刻创造了奇迹！", color: "#f39c12" },
+            SE1: { title: "竞赛国牌佬", desc: "虽然没进国家队，但国赛经历将是你一生的财富。", color: "#9b59b6" },
+            SE2: { title: "竞赛金牌大神", desc: "金牌在手，清北我有！你是站在智力巅峰的传说！", color: "#ffd700" },
+            EX1: { title: "这还是人类吗", desc: "你是如何做到在毫无压力的情况下考上Top2的？外星人请回火星！", color: "#00b894" },
+            PE: { title: "碾压的开始 (完美)", desc: "左手清北通知书，右手挚友相伴。你是当之无愧的人生赢家！", color: "#e84393" },
+            IE: { title: "绝对反杀", desc: "以凡人之躯，比肩神明！用极低的面板属性通过了最高难度的副本！", color: "#ff7675" },
+            JSE: { title: "小佬一位", desc: "波澜不惊，稳稳当当考入名校。稳，就是最大的强。", color: "#0984e3" },
+            DEF: { title: "真实高中生活", desc: "没有惊心动魄，只有日复一日的坚持。这才是真实的青春。", color: "#b2bec3" }
+        },
+
+        Achievements: {
+            "TOP_SCH": { title: "名校生！", cond: "考入Top985/清北级别的学校", desc: "如果中国高中应试教育是一款游戏，那你无疑是游戏的赢家。" },
+            "ANON_100": { title: "爱音同学！", cond: "千早爱音(Anon)好感度达到100", desc: "谁不喜欢有一只粉色的小可爱整天陪着自己呢？" },
+            "FEN_JUE": { title: "只属于我的焚诀！", cond: "萧火火好感度80+且获得秘籍", desc: "三十年河东，三十年河西，莫欺少年穷！" },
+            "KING": { title: "王者！", cond: "竞赛成功进入国赛", desc: "屹立于这个时代的精英行列之中，你已是最强者之一。" },
+            "PEAK": { title: "顶点！", cond: "竞赛在国赛中获得金牌", desc: "无他，绝顶我为峰。" }
+        }
+    };
+
+    /* -----------------------------------------------------------------
+       MODULE 2: STATE MANAGER & ACHIEVEMENT MANAGER
+       ----------------------------------------------------------------- */
+    const StateManager = {
+        data: {
+            player: {
+                name: "Unknown", 
+                diff: "normal", 
+                schoolKey: { tier: 'key', style: 'balanced' }, 
+                subjects: [],
+                stats: { 
+                    iq: 0, logic: 0, img: 0, mem: 0, 
+                    stamina: 100, maxStamina: 100, time: 300, 
+                    stress: 0, satisfaction: 60, money: 0, charm: 0 
+                },
+                compStatus: { 
+                    joined: false, 
+                    currentStage: 0, 
+                    bestRecord: "无", 
+                    hasGold: false, 
+                    hasNational: false 
+                },
+                affinity: { xiao: 0, anon: 0, night: 0, misaka: 0 },
+                hasSecretManual: false
+            },
+            game: { turn: 1, isGameOver: false, gameOverReason: "" },
+            history: { maxStress: 0, failedExams: 0, crisisCount: 0, npcBondCount: 0 }
+        },
+
+        save: function() { 
+            try { 
+                localStorage.setItem('Rebirth_Save_V5', window.btoa(encodeURIComponent(JSON.stringify(this.data)))); 
+                return true; 
+            } catch (e) { 
+                return false; 
+            } 
+        },
+
+        load: function() { 
+            const enc = localStorage.getItem('Rebirth_Save_V5'); 
+            if (!enc) return false; 
+            try { 
+                this.data = JSON.parse(decodeURIComponent(window.atob(enc))); 
+                return true; 
+            } catch (e) { 
+                return false; 
+            } 
+        },
+
+        hasSave: function() { 
+            return !!localStorage.getItem('Rebirth_Save_V5'); 
+        }
+    };
+
+    const AchievementManager = {
+        unlocked: [],
+        
+        init: function() { 
+            const s = localStorage.getItem('Rebirth_Achievements'); 
+            if (s) {
+                try { this.unlocked = JSON.parse(s); } catch (e) { this.unlocked = []; } 
+            }
+        },
+
+        unlock: function(id) {
+            if (this.unlocked.includes(id) || !GameConfig.Achievements[id]) return;
+            
+            this.unlocked.push(id); 
+            localStorage.setItem('Rebirth_Achievements', JSON.stringify(this.unlocked));
+            
+            // 弹窗特效
+            const ach = GameConfig.Achievements[id];
+            const div = document.createElement('div');
+            div.style.cssText = "position:fixed; top:-100px; left:50%; transform:translateX(-50%); background:rgba(10,10,10,0.95); border:2px solid #ffd700; color:#ffd700; padding:15px 30px; border-radius:8px; z-index:10000; text-align:center; box-shadow:0 0 25px rgba(255, 215, 0, 0.2); transition: top 0.5s ease-out, opacity 0.5s;";
+            div.innerHTML = `
+                <div style='font-size:1.2rem; font-weight:bold; margin-bottom:5px'>🏆 成就解锁</div>
+                <div style='color:white; font-size:1.1rem; font-weight:bold'>${ach.title}</div>
+                <div style='font-size:0.8rem; color:#aaa; margin-top:5px; font-style:italic'>${ach.desc}</div>
+            `;
+            document.body.appendChild(div);
+            
+            requestAnimationFrame(() => { div.style.top = "30px"; });
+            setTimeout(() => { 
+                div.style.top = "-150px"; 
+                div.style.opacity = "0"; 
+                setTimeout(() => div.remove(), 500); 
+            }, 4000);
+            
+            UI.log(`🏆 [成就] ${ach.title} 已达成！`, "#ffd700");
+        },
+
+        isUnlocked: function(id) { return this.unlocked.includes(id); }
+    };
+
+    /* -----------------------------------------------------------------
+       MODULE 3: ENGINE (逻辑核心)
+       ----------------------------------------------------------------- */
+    const Engine = {
+        getSchoolConfig: function() { 
+            const k = StateManager.data.player.schoolKey; 
+            return GameConfig.Schools[k.tier][k.style]; 
+        },
+
+        calculateEfficiency: function() {
+            const p = StateManager.data.player;
+            let eff = Engine.getSchoolConfig().eff * (1 + p.stats.iq * 0.05);
+            if (p.stats.stress > 80) eff *= 0.5;
+            if (GameConfig.Calendar.holidays.includes(StateManager.data.game.turn)) eff *= 1.1;
+            return eff;
+        },
+
+        canAfford: function(costT, costS, costM = 0) {
+            const p = StateManager.data.player;
+            if (p.stats.time < costT) return { ok: false, msg: "时间不足" };
+            if (p.stats.stamina < costS) return { ok: false, msg: "体力透支" };
+            if (p.stats.money < costM) return { ok: false, msg: "金钱不足" };
+            return { ok: true };
+        },
+
+        doStudy: function(subId) {
+            const sub = GameConfig.Subjects[subId];
+            const check = Engine.canAfford(sub.costT, sub.costS);
+            if (!check.ok) return UI.log(check.msg, "red");
+            
+            const p = StateManager.data.player;
+            p.stats.time -= sub.costT; 
+            p.stats.stamina -= sub.costS;
+            
+            const eff = Engine.calculateEfficiency();
+            const gain = eff * (1 + (p.stats[sub.boost] || 0) * 0.1);
+            p.stats[sub.boost] += gain * 0.5; 
+            p.stats.iq += 0.02; 
+            p.stats.stress += 3;
+            
+            UI.log(`[${sub.name}] 能力+${gain.toFixed(1)}`);
+            UI.renderGame();
+        },
+
+        doRest: function(type) {
+            const p = StateManager.data.player;
+            if (type === 'nap') {
+                if (p.stats.time < 10) return UI.log("没时间打盹了！", "red");
+                p.stats.time -= 10; 
+                p.stats.stamina = Math.min(200, p.stats.stamina + 10); 
+                p.stats.stress = Math.max(0, p.stats.stress - 2);
+                UI.log("打盹: 体力+10, 时间-10", "green");
+            } else if (type === 'sleep') {
+                if (p.stats.time < 80) return UI.log("时间不够深睡！", "red");
+                p.stats.time -= 80; 
+                p.stats.stamina = 200; 
+                p.stats.stress = Math.max(0, p.stats.stress - 25);
+                UI.log("深度睡眠: 精力充沛!", "#2ecc71");
+            } else if (type === 'play') {
+                if (p.stats.time < 50) return UI.log("没时间玩了！", "red");
+                p.stats.time -= 50; 
+                p.stats.stamina -= 10; 
+                p.stats.stress = Math.max(0, p.stats.stress - 40);
+                UI.log("娱乐: 压力大幅下降", "yellow");
+            }
+            UI.renderGame();
+        },
+
+        doCompTrain: function() {
+            const check = Engine.canAfford(80, 40);
+            if (!check.ok) return UI.log(check.msg, "red");
+            
+            const p = StateManager.data.player;
+            p.stats.time -= 80; 
+            p.stats.stamina -= 40;
+            p.stats.logic += 1.2; 
+            p.stats.iq += 0.1; 
+            p.stats.stress += 10;
+            
+            UI.log("竞赛集训: 逻辑暴涨，身心俱疲。", "#9b59b6");
+            UI.renderGame();
+        },
+
+        doSocial: function(npcId) {
+            const npc = GameConfig.NPCs.find(n => n.id === npcId);
+            const check = Engine.canAfford(npc.cost.t, npc.cost.s, npc.cost.m);
+            if (!check.ok) return UI.log(check.msg, "red");
+            
+            const p = StateManager.data.player;
+            p.stats.time -= npc.cost.t; 
+            p.stats.stamina -= npc.cost.s; 
+            p.stats.money -= npc.cost.m;
+            p.affinity[npcId] = (p.affinity[npcId] || 0) + 20;
+            
+            if (npcId === 'anon' && p.affinity['anon'] >= 100) AchievementManager.unlock("ANON_100");
+            
+            if (npcId === 'xiao' && p.affinity['xiao'] >= 80 && !p.hasSecretManual && (p.stats.iq + p.stats.logic < 15)) {
+                p.hasSecretManual = true; 
+                AchievementManager.unlock("FEN_JUE"); 
+                p.stats.logic += 10;
+                UI.log("【奇遇】萧火火赠予你《三年模拟五年高考》！", "#e67e22");
+            }
+            
+            if (p.affinity[npcId] === 100) StateManager.data.history.npcBondCount++;
+            
+            UI.log(`[社交] ${npc.name}: ${npc.effect(p)} (好感${p.affinity[npcId]})`, "#e91e63");
+            UI.renderGame();
+        },
+
+        passTurn: function() {
+            const g = StateManager.data.game;
+            const p = StateManager.data.player;
+            const h = StateManager.data.history;
+            const school = Engine.getSchoolConfig();
+
+            // 1. 压力增加
+            p.stats.stress += school.stress;
+            if (p.stats.stress > h.maxStress) h.maxStress = p.stats.stress;
+            
+            // 2. 崩溃检测
+            if (p.stats.stress >= 100) {
+                h.crisisCount++;
+                if (p.stats.stress >= 120 || h.crisisCount >= 3) {
+                    return Engine.triggerEnding('BE1', 0);
+                }
+                UI.log("【崩溃】本周心理防线崩塌！", "red");
+                p.stats.stress = 60; 
+                p.stats.time = 0;
+            }
+
+            // 3. 事件检查
+            Engine.checkCompetition(g.turn);
+            
+            if (GameConfig.Calendar.exams.includes(g.turn)) {
+                Engine.triggerExam(g.turn, school);
+            }
+
+            // 4. 下一周
+            g.turn++;
+
+            if (g.turn === 17 || g.turn === 33) {
+                UI.log(`========== 新学年开始 ==========`, "cyan");
+                p.compStatus.currentStage = 0;
+            }
+
+            // 5. 假期与结束判定
+            if (g.turn > GameConfig.MAX_TURNS) {
+                Engine.calculateEnding();
+            } else {
+                const isHoliday = GameConfig.Calendar.holidays.includes(g.turn);
+                if (isHoliday) {
+                    p.stats.time = 600; 
+                    p.stats.stamina = 200; 
+                    p.stats.stress = Math.floor(p.stats.stress / 2);
+                    UI.log(`>>> ${GameConfig.Calendar.getDesc(g.turn)} 来了！`, "#e67e22");
+                } else {
+                    p.stats.time = GameConfig.TIME_PER_TURN; 
+                    p.stats.stamina = Math.min(100, p.stats.stamina + 20);
+                    UI.log(`>>> 进入第 ${g.turn} 周。`, "#aaa");
+                }
+                StateManager.save();
+                UI.renderGame();
+            }
+        },
+
+        checkCompetition: function(turn) {
+            const p = StateManager.data.player;
+            if (!p.compStatus.joined) return;
+            
+            const event = GameConfig.CompetitionSchedule[turn];
+            if (!event) return;
+            
+            // 检查阶段连贯性
+            if (event.stage > 1 && p.compStatus.currentStage < (event.stage - 1)) return;
+
+            const power = p.stats.logic * 1.5 + p.stats.iq * 2;
+            const roll = Math.random() * 30;
+            
+            if ((power * 4 + roll) >= event.req) {
+                p.compStatus.currentStage = event.stage;
+                p.compStatus.bestRecord = event.name;
+                
+                if (event.stage === 4) {
+                    p.compStatus.hasNational = true;
+                    AchievementManager.unlock("KING");
+                    if ((power * 4 + roll) >= event.req + 100) { 
+                        p.compStatus.hasGold = true; 
+                        AchievementManager.unlock("PEAK"); 
+                    }
+                }
+                UI.log(`>>> 【捷报】${event.name} 晋级！`, "#2ecc71");
+            } else {
+                UI.log(`>>> 【遗憾】${event.name} 落榜。`, "red");
+            }
+        },
+
+        triggerExam: function(turn, school) {
+            const p = StateManager.data.player;
+            const power = p.stats.iq + p.stats.logic + p.stats.mem + p.stats.img;
+            const difficulty = 1 + (turn / 35);
+            
+            let score = 300 + (power * 7 / difficulty) + Math.random() * 30;
+            score = Math.floor(Math.min(750, score));
+
+            if (turn === 48) { 
+                p.stats.finalScore = score; 
+                return; 
+            }
+            
+            UI.log(`${turn > 40 ? "【模拟考】" : "【统考】"} 总分: ${score}`, "orange");
+
+            if (score < school.minScore) {
+                StateManager.data.history.failedExams++;
+                p.stats.satisfaction -= 15; 
+                p.stats.stress += 10;
+                UI.log("成绩未达标！", "red");
+            } else {
+                p.stats.satisfaction += 5; 
+                p.stats.money += 200;
+                UI.log("成绩达标！", "green");
+            }
+        },
+
+        joinCompetition: function() {
+            StateManager.data.player.compStatus.joined = true;
+            UI.log("已报名奥林匹克竞赛。", "cyan");
+            StateManager.save();
+            UI.renderGame();
+        },
+
+        calculateEnding: function() {
+            const p = StateManager.data.player;
+            const h = StateManager.data.history;
+            const score = p.stats.finalScore || 300;
+            
+            let tier = "tier1";
+            if (score >= 700) tier = "tier9"; 
+            else if (score >= 670) tier = "tier8"; 
+            else if (score >= 640) tier = "tier7";
+            else if (score >= 610) tier = "tier6"; 
+            else if (score >= 580) tier = "tier5"; 
+            else if (score >= 530) tier = "tier4";
+            else if (score >= 480) tier = "tier3"; 
+            else if (score >= 400) tier = "tier2";
+
+            const uniList = GameConfig.UniversityList[tier].list;
+            const finalUni = uniList[Math.floor(Math.random() * uniList.length)];
+            
+            if (tier === 'tier9' || tier === 'tier8') AchievementManager.unlock("TOP_SCH");
+
+            let endID = "DEF";
+            if (score < 400) endID = "BE2"; 
+            else if (h.npcBondCount >= 2 && score >= 670 && p.compStatus.hasNational) endID = "PE";
+            else if (score >= 670 && p.stats.iq < 10 && p.stats.logic < 10 && p.stats.mem < 10) endID = "IE";
+            else if (p.compStatus.hasGold) endID = "SE2"; 
+            else if (score >= 670 && h.maxStress < 90 && p.stats.satisfaction > 70) endID = "EX1";
+            else if (h.maxStress >= 95 && score >= 610) endID = "GE1"; 
+            else if (h.failedExams >= 2 && score >= 610) endID = "GE2";
+            else if (p.compStatus.hasNational) endID = "SE1"; 
+            else if (h.crisisCount === 0 && score >= 640) endID = "JSE";
+            else if (score >= 480) endID = "NE";
+            
+            Engine.triggerEnding(endID, score, finalUni);
+        },
+
+        triggerEnding: function(id, score, uni) {
+            StateManager.data.game.isGameOver = true;
+            document.getElementById('screen-game').classList.add('hidden');
+            
+            const endScreen = document.createElement('div');
+            endScreen.id = 'screen-ending';
+            endScreen.style = "width:100%;max-width:700px;border:2px solid white;padding:40px;text-align:center;animation:fadeIn 2s;";
+            const endData = GameConfig.Endings[id];
+            
+            endScreen.innerHTML = `
+                <h1 style="font-size:3rem; margin:0 0 20px 0; color:${endData.color}">${endData.title}</h1>
+                <div style="font-size:1.2rem; color:#aaa; margin-bottom:40px;">${endData.desc}</div>
+                <div style="border-top:1px dashed #666; border-bottom:1px dashed #666; padding:20px; margin-bottom:30px;">
+                    <p>高考总分: <span style="font-size:2rem; font-weight:bold; color:white">${score || "???"}</span></p>
+                    ${uni ? `<p>录取院校: <span style="font-size:1.5rem; color:#3498db">${uni}</span></p>` : ''}
+                </div>
+                <p style="color:#666; font-size:0.8rem;">ID: ${StateManager.data.player.name} | MaxStress: ${StateManager.data.history.maxStress}</p>
+                <button class="btn" onclick="location.reload()" style="margin-top:20px; border-color:${endData.color}; color:${endData.color}">>> 再次重生 (Rebirth)</button>
+            `;
+            document.body.appendChild(endScreen);
+            // [后端同步] 上传成绩并生成按钮
+            (async () => {
+                try {
+                    const res = await fetch('/api/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: p.name, score: score, uni: uni, ending: endData.title })
+                    });
+                    const result = await res.json();
+                    const shareUrl = `${window.location.origin}/?shareId=${result.shareId}`;
+        
+                    const shareBtn = document.createElement('button');
+                    shareBtn.className = 'btn';
+                    shareBtn.style.marginTop = "20px";
+                    shareBtn.innerText = "🔗 复制我的重生链接";
+                    shareBtn.onclick = () => {
+                        navigator.clipboard.writeText(shareUrl);
+                        alert("链接已复制！给朋友们一点小小震撼！");
+                    };
+                    endScreen.appendChild(shareBtn);
+                } catch (e) { console.error("Sync Failed"); }
+            })();
+            document.getElementById('game-container').classList.add('hidden');
+        }
+    };
+
+    /* -----------------------------------------------------------------
+       MODULE 4: UI CONTROLLER (视图与交互)
+       ----------------------------------------------------------------- */
+    const UI = {
+        init: function() { 
+            AchievementManager.init(); 
+            SetupUI.init(); 
+        },
+
+        renderGame: function() {
+            const p = StateManager.data.player;
+            const g = StateManager.data.game;
+            const sc = Engine.getSchoolConfig();
+
+            // 防御性检查
+            if (!p.compStatus) p.compStatus = { joined: false, currentStage: 0 };
+
+            // Header Update
+            const mainPanel = document.getElementById('col-main');
+            const headerH3 = mainPanel.querySelector('h3');
+            if (headerH3) headerH3.innerText = `ID: ${p.name}`;
+            
+            const turnEl = document.getElementById('ui-turn');
+            turnEl.innerText = `WEEK ${g.turn}`;
+            turnEl.style.background = GameConfig.Calendar.holidays.includes(g.turn) ? "#e67e22" : "white";
+            
+            document.getElementById('ui-countdown').innerText = GameConfig.MAX_TURNS - g.turn;
+            document.getElementById('ui-school').innerText = sc.name + " " + GameConfig.Calendar.getDesc(g.turn);
+
+            // Stats Update
+            const statsBox = document.getElementById('ui-stats-container');
+            statsBox.innerHTML = '';
+            
+            let maxTime = GameConfig.Calendar.holidays.includes(g.turn) ? 600 : 300;
+            let maxSta = GameConfig.Calendar.holidays.includes(g.turn) ? 200 : p.stats.maxStamina;
+            
+            const bars = [
+                { l: "时间", v: p.stats.time, m: maxTime, c: "#9b59b6" },
+                { l: "体力", v: p.stats.stamina, m: maxSta, c: "#2ecc71" },
+                { l: "压力", v: p.stats.stress, m: 100, c: p.stats.stress > 80 ? "#e74c3c" : "#3498db" },
+                { l: "满意", v: p.stats.satisfaction, m: 100, c: "#f1c40f" }
+            ];
+            
+            bars.forEach(b => {
+                const pct = Math.min(100, (b.v / b.m) * 100);
+                statsBox.innerHTML += `
+                    <div class="stat-bar">
+                        <div style="display:flex;justify-content:space-between;font-size:0.8rem">
+                            <span>${b.l}</span><span>${Math.floor(b.v)}/${b.m}</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width:${pct}%;background:${b.c}"></div>
+                        </div>
+                    </div>`;
+            });
+
+            // Skills Section
+            statsBox.innerHTML += `<div style="margin-top:15px; border-top:1px dashed #555; padding-top:5px; font-size:0.9rem; font-weight:bold; color:#aaa;">📚 学科能力</div>`;
+            const allSubs = ['chn', 'math', 'eng'].concat(p.subjects);
+            let subGrid = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:5px;">`;
+            
+            allSubs.forEach(subId => {
+                const sub = GameConfig.Subjects[subId];
+                const val = p.stats[sub.boost].toFixed(1);
+                let color = "#bbb";
+                if (val > 25) color = "#2ecc71"; 
+                if (val > 50) color = "#f1c40f"; 
+                if (val > 75) color = "#e67e22"; 
+                if (val > 100) color = "#e74c3c";
+                subGrid += `<div style="background:#222; padding:4px; border-radius:3px; font-size:0.8rem; display:flex; justify-content:space-between;"><span>${sub.name}</span><span style="color:${color}; font-weight:bold;">${val}</span></div>`;
+            });
+            subGrid += `</div>`;
+            statsBox.innerHTML += subGrid;
+
+            // Traits Section
+            statsBox.innerHTML += `<div style="margin-top:15px; border-top:1px dashed #555; padding-top:5px; font-size:0.9rem; font-weight:bold; color:#aaa;">🧬 固有天赋</div>`;
+            statsBox.innerHTML += `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:0.8rem;margin-top:5px;">
+                    <div>🧠 智力: ${p.stats.iq.toFixed(1)}</div>
+                    <div>✨ 魅力: ${p.stats.charm}</div>
+                    <div>💰 金钱: $${p.stats.money}</div>
+                    <div>🏠 家境: ${p.stats.fam}</div>
+                </div>`;
+            
+            if (p.compStatus.joined) {
+                statsBox.innerHTML += `<div style="margin-top:10px;font-size:0.8rem;color:#9b59b6;text-align:center;border:1px solid #9b59b6;padding:3px;">🏆 竞赛最佳: ${p.compStatus.bestRecord}</div>`;
+            }
+
+            // Actions Section
+            const actBox = document.getElementById('ui-actions');
+            actBox.innerHTML = '';
+            
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn'; 
+            nextBtn.style = "width:100%; margin-bottom:10px; border-color:#9b59b6; color:#9b59b6";
+            nextBtn.innerText = ">> 结束本周 >>"; 
+            nextBtn.onclick = () => Engine.passTurn();
+            actBox.appendChild(nextBtn);
+
+            // [Competition Logic Fix]
+            if (!p.compStatus.joined && g.turn <= 12) {
+                actBox.appendChild(UI.btn("🏆 报名竞赛", () => Engine.joinCompetition()));
+            } else if (p.compStatus.joined) {
+                actBox.appendChild(UI.smartBtn("🔥 竞赛集训", 80, 40, () => Engine.doCompTrain()));
+            }
+
+            actBox.appendChild(UI.sep("STUDY"));
+            allSubs.forEach(k => { 
+                const s = GameConfig.Subjects[k]; 
+                actBox.appendChild(UI.smartBtn(`${s.name} (-${s.costT}t/-${s.costS}s)`, s.costT, s.costS, () => Engine.doStudy(k))); 
+            });
+
+            const activeNPCs = GameConfig.NPCs.filter(npc => npc.condition(p));
+            if (activeNPCs.length > 0) {
+                actBox.appendChild(UI.sep("SOCIAL"));
+                activeNPCs.forEach(npc => {
+                    actBox.appendChild(UI.smartBtn(`💬 ${npc.name} (-${npc.cost.t}t)`, npc.cost.t, npc.cost.s, () => Engine.doSocial(npc.id), npc.cost.m));
+                });
+            }
+
+            actBox.appendChild(UI.sep("REST"));
+            actBox.appendChild(UI.smartBtn("⚡ 打盹 (-10t/+10s)", 10, 0, () => Engine.doRest('nap')));
+            actBox.appendChild(UI.smartBtn("🛌 深睡 (-80t/Full)", 80, 0, () => Engine.doRest('sleep')));
+            actBox.appendChild(UI.smartBtn("🎮 娱乐 (-50t/-10s)", 50, 10, () => Engine.doRest('play')));
+        },
+
+        toast: function(msg) {
+            const t = document.createElement('div');
+            t.style = "position:fixed; bottom:20px; right:20px; background:#f1c40f; color:black; padding:10px 20px; border-radius:4px; font-weight:bold; animation:fadeInOut 3s forwards; z-index:9999";
+            t.innerText = msg; 
+            document.body.appendChild(t); 
+            setTimeout(() => t.remove(), 3000);
+        },
+
+        /*showAchievements: function() {
+            const setupBox = document.getElementById('screen-setup');
+            let achHTML = `<h2 style="border-bottom:2px solid white; padding-bottom:10px">🏆 荣誉室</h2><div style="display:flex; flex-direction:column; gap:10px; height:80%; overflow-y:auto">`;
+            for (let id in GameConfig.Achievements) {
+                const ach = GameConfig.Achievements[id]; 
+                const unlocked = AchievementManager.isUnlocked(id);
+                const icon = unlocked ? "🟡" : "⚪"; 
+                const color = unlocked ? "white" : "#666"; 
+                const status = unlocked ? "[已达成]" : "[未达成]";
+                achHTML += `
+                    <div style="border:1px solid ${color}; padding:10px; border-radius:4px; color:${color}">
+                        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${icon} ${ach.title} <span style="font-size:0.8rem; opacity:0.7">${status}</span></div>
+                        <div style="font-size:0.9rem; margin-bottom:5px;">达成条件: ${unlocked ? ach.cond : "???"}</div>
+                        <div style="font-size:0.8rem; font-style:italic; color:#aaa;">"${ach.desc}"</div>
+                    </div>`;
+            }
+            achHTML += `</div><button class="btn" onclick="location.reload()" style="margin-top:20px">返回</button>`;
+            setupBox.innerHTML = achHTML;
+        },*/
+        //Update Here- Final Update
+        showAchievements: function() {
+            // [V5.5.4 FIX] 使用覆盖层代替页面重绘，防止布局跳动和数据丢失
+            const overlay = document.createElement('div');
+            overlay.id = 'ach-overlay';
+            // 全屏黑底遮罩
+            overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(5,5,5,0.98); z-index:5000; display:flex; flex-direction:column; align-items:center; justify-content:center; animation:fadeIn 0.3s;";
+            
+            let achHTML = `
+                <div style="width:90%; max-width:600px; height:70%; overflow-y:auto; border:2px solid white; padding:20px; background:black; box-shadow:0 0 30px rgba(255,255,255,0.1);">
+                    <h2 style="border-bottom:2px solid white; padding-bottom:15px; margin-top:0; text-align:center;">🏆 荣誉室 (Hall of Fame)</h2>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+            `;
+            
+            for (let id in GameConfig.Achievements) {
+                const ach = GameConfig.Achievements[id];
+                const unlocked = AchievementManager.isUnlocked(id);
+                const icon = unlocked ? "🟡" : "⚪";
+                const color = unlocked ? "white" : "#444"; // 未解锁稍微暗一点
+                const border = unlocked ? "white" : "#333";
+                const status = unlocked ? "<span style='color:#2ecc71'>[已达成]</span>" : "<span style='color:#666'>[LOCKED]</span>";
+                
+                achHTML += `
+                    <div style="border:1px solid ${border}; padding:12px; border-radius:4px; color:${color}; transition:transform 0.2s">
+                        <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px; display:flex; justify-content:space-between;">
+                            <span>${icon} ${ach.title}</span>
+                            <span style="font-size:0.8rem;">${status}</span>
+                        </div>
+                        <div style="font-size:0.9rem; margin-bottom:5px; color:${unlocked?'#ddd':'#666'}">
+                            条件: ${unlocked ? ach.cond : "???????????"}
+                        </div>
+                        <div style="font-size:0.8rem; font-style:italic; color:${unlocked?'#aaa':'#444'};">
+                            "${ach.desc}"
+                        </div>
+                    </div>
+                `;
+            }
+            
+            achHTML += `
+                    </div>
+                </div>
+                <button class="btn" style="margin-top:30px; width:200px; border-color:white;" onclick="document.getElementById('ach-overlay').remove()">
+                    🔙 返回 (BACK)
+                </button>
+            `;
+            
+            overlay.innerHTML = achHTML;
+            document.body.appendChild(overlay);
+        },
+
+        showCloudRank: async function() {
+            const overlay = document.createElement('div');
+        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9000; display:flex; flex-direction:column; align-items:center; justify-content:center;";
+        overlay.innerHTML = `<h2 style="color:#ffd700">🏆 全球重生成绩榜</h2><div id="rank-content" style="color:white; width:80%; max-width:400px">加载中...</div><button class="btn" onclick="this.parentElement.remove()">关闭</button>`;
+        document.body.appendChild(overlay);
+
+            try {
+                const res = await fetch('/api/rank');
+                const data = await res.json();
+                let html = '<table style="width:100%; text-align:left; margin:20px 0;"><tr><th>名次</th><th>代号</th><th>分数</th></tr>';
+                data.forEach((item, i) => {
+                html += `<tr style="border-bottom:1px solid #333"><td>${i+1}</td><td>${item.name}</td><td>${item.score}</td></tr>`;
+                });
+                html += '</table>';
+                document.getElementById('rank-content').innerHTML = html;
+            } catch (e) { document.getElementById('rank-content').innerText = "获取失败，服务器未响应"; }
+        }
+
+        smartBtn: function(txt, costT, costS, cb, costM = 0) {
+            const p = StateManager.data.player; 
+            const btn = document.createElement('button'); 
+            btn.className = 'btn'; btn.style.width = '100%'; btn.style.marginBottom = '4px';
+            let disabled = false; let note = "";
+            if (p.stats.time < costT) { disabled = true; note = "(无时间)"; } 
+            else if (p.stats.stamina < costS) { disabled = true; note = "(太累)"; } 
+            else if (p.stats.money < costM) { disabled = true; note = "(没钱)"; }
+            
+            if (disabled) { 
+                btn.disabled = true; 
+                btn.innerText = txt + " " + note; 
+                btn.style.borderColor = "#444"; 
+                btn.style.color = "#666"; 
+            } else { 
+                btn.innerText = txt; 
+                btn.onclick = cb; 
+            }
+            return btn;
+        },
+
+        btn: function(txt, cb) { 
+            let b = document.createElement('button'); 
+            b.className = 'btn'; 
+            b.style.width = '100%'; 
+            b.style.marginBottom = '5px'; 
+            b.innerText = txt; 
+            b.onclick = cb; 
+            return b; 
+        },
+
+        sep: function(t) { 
+            const d = document.createElement('div');
+            d.innerHTML = `--- ${t} ---`;
+            d.style = "text-align:center;color:#666;font-size:0.7rem;margin:8px 0";
+            return d;
+        },
+
+        log: function(m, c = "white") {
+            let d = document.createElement('div'); 
+            d.className = 'log-entry'; 
+            d.style.color = c;
+            d.innerHTML = `<span class="log-turn">[W${StateManager.data.game.turn}]</span> ${m}`;
+            document.getElementById('game-log').prepend(d);
+        }
+    };
+
+/* -----------------------------------------------------------------
+       MODULE 5: SETUP UI (V5.5.3 FIXED - 修复变量名错误)
+       ----------------------------------------------------------------- */
+    const SetupUI = {
+        selectedSub: [],
+        curDiff: 'normal',
+        curSchoolTier: 'ordinary',
+        curSchoolStyle: 'balanced',
+        alloc: {},
+
+        init: function() {
+            this.resetStats();
+            // 插入荣誉室按钮
+            const achBtn = document.createElement('button');
+            achBtn.className = 'btn';
+            achBtn.style.marginBottom = '20px';
+            achBtn.innerText = "🏆 查看荣誉室";
+            achBtn.onclick = () => UI.showAchievements();
+
+            const rankBtn = document.createElement('button');
+            rankBtn.className = 'btn';
+            rankBtn.style.width = '100%';
+            rankBtn.style.marginBottom = '20px';
+            rankBtn.innerText = "🌐 全球排行榜";
+            rankBtn.onclick = () => UI.showCloudRank();
+            setupScreen.prepend(rankBtn);
+            
+            // 防止重复插入
+            const setupScreen = document.getElementById('screen-setup');
+            if (!setupScreen.querySelector('button[innerText="🏆 查看荣誉室"]')) {
+                setupScreen.prepend(achBtn);
+            }
+
+            if (StateManager.hasSave()) {
+                const loadBtn = document.createElement('button');
+                loadBtn.className = 'btn';
+                loadBtn.style.width = '100%';
+                loadBtn.style.borderColor = '#2ecc71';
+                loadBtn.innerText = ">> 读取残留记忆";
+                loadBtn.onclick = () => SetupUI.loadGame();
+                document.getElementById('load-status').innerHTML = '';
+                document.getElementById('load-status').appendChild(loadBtn);
+            }
+            this.render();
+        },
+
+        loadGame: function() {
+            if (StateManager.load()) {
+                document.getElementById('screen-setup').classList.add('hidden');
+                document.getElementById('screen-game').classList.remove('hidden');
+                UI.renderGame();
+                UI.log("存档读取成功。", "#2ecc71");
+            }
+        },
+
+        resetStats: function() {
+            for (let k in GameConfig.Stats) this.alloc[k] = GameConfig.Stats[k].base;
+            this.render();
+        },
+
+        applyPreset: function(type) {
+            this.resetStats();
+            let points = GameConfig.Difficulty[this.curDiff].points;
+            const keys = Object.keys(this.alloc);
+
+            while (points > 0) {
+                if (type === 'random') {
+                    let k = keys[Math.floor(Math.random() * keys.length)];
+                    this.alloc[k]++;
+                } else if (type === 'sci') {
+                    if (points > 0) { this.alloc['iq']++; points--; }
+                    if (points > 0) { this.alloc['logic']++; points--; }
+                    if (points > 0) { this.alloc['mem']++; points--; }
+                    continue;
+                } else if (type === 'arts') {
+                    if (points > 0) { this.alloc['mem']++; points--; }
+                    if (points > 0) { this.alloc['img']++; points--; }
+                    if (points > 0) { this.alloc['charm'] ? this.alloc['charm']++ : this.alloc['iq']++; points--; }
+                    continue;
+                }
+                points--;
+            }
+            this.render();
+        },
+
+        render: function() {
+            // 1. 难度
+            this.renderDOM('diff-select', GameConfig.Difficulty, (key) => {
+                this.curDiff = key;
+                this.resetStats();
+            });
+            document.getElementById('diff-desc').innerText = GameConfig.Difficulty[this.curDiff].desc;
+
+            // 2. 高中选择 (容器检查)
+            let schoolArea = document.getElementById('school-select-area');
+            if (!schoolArea) {
+                schoolArea = document.createElement('div');
+                schoolArea.id = 'school-select-area';
+                schoolArea.className = 'form-group';
+                schoolArea.innerHTML = `<label>> 选择高中:</label><div id="school-grid" class="grid-3" style="font-size:0.8rem"></div><p id="school-desc" style="font-size:0.8rem; color:#888; margin-top:5px"></p>`;
+                document.getElementById('diff-select').parentNode.after(schoolArea);
+            }
+            
+            const tiers = { ordinary: "普通", key: "重点", super: "超级" };
+            const styles = { relaxed: "宽松", balanced: "均衡", strict: "严格" };
+            const schoolGrid = document.getElementById('school-grid');
+            
+            schoolGrid.innerHTML = `
+                <div class="option-box" onclick="SetupUI.cycleTier()">Tier: ${tiers[this.curSchoolTier]}</div>
+                <div class="option-box" onclick="SetupUI.cycleStyle()">Style: ${styles[this.curSchoolStyle]}</div>
+                <div class="option-box selected" style="cursor:default; border-color:#aaa; color:#aaa">
+                    ${GameConfig.Schools[this.curSchoolTier][this.curSchoolStyle].name}
+                </div>
+            `;
+            
+            const sc = GameConfig.Schools[this.curSchoolTier][this.curSchoolStyle];
+            document.getElementById('school-desc').innerText = 
+                `[${sc.buff}] 效率:${sc.eff} | 压力:${sc.stress}/周 | 及格线:${sc.minScore}`;
+
+            // 3. 选科
+            this.renderDOM('sub-select', GameConfig.Subjects, (key) => {
+                if (this.selectedSub.includes(key)) {
+                    this.selectedSub = this.selectedSub.filter(x => x !== key);
+                } else if (this.selectedSub.length < 3) {
+                    this.selectedSub.push(key);
+                }
+            }, ['phy','chem','bio','his','pol','geo']);
+            
+            document.getElementById('sub-count').innerText = this.selectedSub.length;
+
+            // 4. 属性点
+            const statBox = document.getElementById('stat-select');
+            statBox.innerHTML = '';
+            
+            const tools = document.createElement('div');
+            tools.style = 'display:flex; gap:5px; margin-bottom:10px';
+            tools.innerHTML = `
+                <button class="btn" style="flex:1;padding:5px;font-size:0.8rem" onclick="SetupUI.applyPreset('random')">🎲随机</button>
+                <button class="btn" style="flex:1;padding:5px;font-size:0.8rem" onclick="SetupUI.applyPreset('sci')">🧪理科</button>
+                <button class="btn" style="flex:1;padding:5px;font-size:0.8rem" onclick="SetupUI.applyPreset('arts')">🎨文科</button>
+                <button class="btn" style="flex:1;padding:5px;font-size:0.8rem" onclick="SetupUI.resetStats()">♻️重置</button>
+            `;
+            statBox.appendChild(tools);
+
+            let baseTotal = 0;
+            for (let k in GameConfig.Stats) baseTotal += GameConfig.Stats[k].base;
+            
+            let used = 0;
+            for (let k in this.alloc) used += this.alloc[k];
+            
+            let left = (baseTotal + GameConfig.Difficulty[this.curDiff].points) - used;
+            
+            const ptDisplay = document.getElementById('remain-pts');
+            ptDisplay.innerText = left;
+            ptDisplay.style.color = left < 0 ? 'red' : 'white';
+
+            for (let k in GameConfig.Stats) {
+                statBox.innerHTML += `
+                    <div class="stat-allocator">
+                        <span style="width:60px">${GameConfig.Stats[k].name}</span>
+                        <button class="btn" onclick="SetupUI.mod('${k}', -1)">-</button>
+                        <span style="width:30px; text-align:center">${this.alloc[k]}</span>
+                        <button class="btn" onclick="SetupUI.mod('${k}', 1)">+</button>
+                    </div>`;
+            }
+
+            // 5. 启动按钮
+            const btn = document.getElementById('btn-start');
+            if (this.selectedSub.length === 3 && left === 0) {
+                btn.disabled = false;
+                btn.innerText = ">> 启动重生程序";
+                btn.onclick = () => this.startGame();
+            } else {
+                btn.disabled = true;
+                btn.innerText = "设置未完成";
+            }
+        },
+
+        renderDOM: function(id, source, callback, filterKeys) {
+            const box = document.getElementById(id);
+            box.innerHTML = '';
+            let keys = filterKeys || Object.keys(source);
+            keys.forEach(key => {
+                let div = document.createElement('div');
+                let isSelected = this.selectedSub.includes(key) || this.curDiff === key;
+                div.className = 'option-box ' + (isSelected ? 'selected' : '');
+                div.innerText = source[key].name;
+                div.onclick = () => {
+                    callback(key);
+                    this.render();
+                };
+                box.appendChild(div);
+            });
+        },
+
+        mod: function(key, delta) {
+            if (delta < 0 && this.alloc[key] > 1) this.alloc[key]--;
+            if (delta > 0) this.alloc[key]++;
+            this.render();
+        },
+
+        // [FIXED HERE] 修复变量名引用错误 keys -> k
+        cycleTier: function() {
+            const k = ['ordinary', 'key', 'super'];
+            let idx = k.indexOf(this.curSchoolTier);
+            this.curSchoolTier = k[(idx + 1) % 3];
+            this.render();
+        },
+
+        // [FIXED HERE] 修复变量名引用错误 keys -> k
+        cycleStyle: function() {
+            const k = ['relaxed', 'balanced', 'strict'];
+            let idx = k.indexOf(this.curSchoolStyle);
+            this.curSchoolStyle = k[(idx + 1) % 3];
+            this.render();
+        },
+
+        startGame: function() {
+            const p = StateManager.data.player;
+            p.name = document.getElementById('inp-name').value || "Player";
+            p.diff = this.curDiff;
+            p.subjects = this.selectedSub;
+            p.schoolKey = { tier: this.curSchoolTier, style: this.curSchoolStyle };
+            
+            for (let k in this.alloc) p.stats[k] = this.alloc[k];
+            p.stats.money = GameConfig.Difficulty[this.curDiff].money;
+            p.stats.time = GameConfig.TIME_PER_TURN;
+
+            p.compStatus = { joined: false, currentStage: 0, bestRecord: "无", hasGold: false, hasNational: false };
+            p.affinity = { xiao: 0, anon: 0, night: 0, misaka: 0 };
+            p.hasSecretManual = false;
+            
+            StateManager.data.history = { maxStress: 0, failedExams: 0, crisisCount: 0, npcBondCount: 0 };
+            
+            document.getElementById('screen-setup').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('hidden');
+            UI.renderGame();
+            UI.log("系统启动成功。V5.5.3 Final Fixed.");
+        }
+    }; 
+
+    /* -----------------------------------------------------------------
+       MODULE 6: VISUAL FX (特效引擎)
+       ----------------------------------------------------------------- */
+    const FX = {
+        init: function() { 
+            this.initClickFX(); 
+            this.initParticles(); 
+            this.initSlogans(); 
+        },
+
+        initClickFX: function() {
+            const words = ["富强", "民主", "文明", "和谐", "自由", "平等", "公正", "法治", "爱国", "敬业", "诚信", "友善", "⭐", "❤", "🚩", "AC!", "RP++"];
+            let index = 0;
+            document.addEventListener('mousedown', function(e) {
+                const span = document.createElement('span');
+                const text = Math.random() > 0.3 ? words[index % 12] : words[Math.floor(Math.random() * words.length)];
+                if (Math.random() > 0.3 && index < 12) index++;
+                span.innerText = text;
+                span.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;color:${FX.getRandomColor()};font-weight:bold;font-size:1.2rem;pointer-events:none;user-select:none;z-index:9999;animation:floatUp 1s ease-out forwards;`;
+                document.body.appendChild(span); 
+                setTimeout(() => span.remove(), 1000);
+            });
+            const style = document.createElement('style');
+            style.innerHTML = `@keyframes floatUp { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50px) scale(1.2); opacity: 0; } }`;
+            document.head.appendChild(style);
+        },
+
+        getRandomColor: function() { 
+            return ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#ffffff', '#e84393'][Math.floor(Math.random() * 6)]; 
+        },
+
+        initParticles: function() {
+            const canvas = document.getElementById('particle-canvas'); 
+            const ctx = canvas.getContext('2d');
+            let width, height; 
+            let particles = []; 
+            const mouse = { x: null, y: null, radius: 100 };
+            
+            window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
+            window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+            
+            function resize() { 
+                width = canvas.width = window.innerWidth; 
+                height = canvas.height = window.innerHeight; 
+            }
+            window.addEventListener('resize', resize); 
+            resize();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width; 
+                    this.y = Math.random() * height;
+                    this.vx = (Math.random() - 0.5) * 0.5; 
+                    this.vy = (Math.random() - 0.5) * 0.5;
+                    this.size = Math.random() * 2 + 1; 
+                    this.baseX = this.x; 
+                    this.baseY = this.y; 
+                    this.density = (Math.random() * 20) + 1;
+                }
+                draw() { 
+                    ctx.beginPath(); 
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); 
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; 
+                    ctx.fill(); 
+                }
+                update() {
+                    if (mouse.x != null) {
+                        let dx = mouse.x - this.x; 
+                        let dy = mouse.y - this.y; 
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < mouse.radius) {
+                            const forceDirectionX = dx / distance; 
+                            const forceDirectionY = dy / distance;
+                            const force = (mouse.radius - distance) / mouse.radius;
+                            const directionX = forceDirectionX * force * this.density * 0.6; 
+                            const directionY = forceDirectionY * force * this.density * 0.6;
+                            this.x += directionX; 
+                            this.y += directionY;
+                        } else { 
+                            if (this.x !== this.baseX) { let dx = this.x - this.baseX; this.x -= dx / 20; } 
+                            if (this.y !== this.baseY) { let dy = this.y - this.baseY; this.y -= dy / 20; } 
+                        }
+                    }
+                    this.baseX += this.vx; 
+                    this.baseY += this.vy;
+                    if (this.baseX < 0) this.baseX = width; 
+                    if (this.baseX > width) this.baseX = 0; 
+                    if (this.baseY < 0) this.baseY = height; 
+                    if (this.baseY > height) this.baseY = 0;
+                    this.draw();
+                }
+            }
+
+            function initParts() { 
+                particles = []; 
+                let numberOfParticles = (width * height) / 9000; 
+                for (let i = 0; i < numberOfParticles; i++) particles.push(new Particle()); 
+            }
+            initParts();
+
+            function connect() {
+                let opacityValue = 1;
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let distance = ((particles[a].x - particles[b].x) * (particles[a].x - particles[b].x)) + 
+                                       ((particles[a].y - particles[b].y) * (particles[a].y - particles[b].y));
+                        if (distance < (canvas.width / 7) * (canvas.height / 7)) { 
+                            opacityValue = 1 - (distance / 20000); 
+                            if (opacityValue > 0) { 
+                                ctx.strokeStyle = 'rgba(255, 255, 255,' + opacityValue * 0.2 + ')'; 
+                                ctx.lineWidth = 1; 
+                                ctx.beginPath(); 
+                                ctx.moveTo(particles[a].x, particles[a].y); 
+                                ctx.lineTo(particles[b].x, particles[b].y); 
+                                ctx.stroke(); 
+                            } 
+                        }
+                    }
+                }
+            }
+
+            function animate() { 
+                requestAnimationFrame(animate); 
+                ctx.clearRect(0, 0, width, height); 
+                for (let i = 0; i < particles.length; i++) particles[i].update(); 
+                connect(); 
+            }
+            animate();
+        },
+
+        initSlogans: function() {
+            const colStats = document.getElementById('col-stats'); 
+            if (document.getElementById('slogan-box')) return;
+            const box = document.createElement('div'); 
+            box.id = 'slogan-box'; 
+            box.innerHTML = `<span class="cursor"></span>`; 
+            colStats.appendChild(box);
+            
+            const slogans = [
+                "入室即静，入座即学", "只要学不死，就往死里学", "乾坤未定，你我皆是黑马", 
+                "将来的你，一定会感谢现在拼命的自己", "生前何必久睡，死后自会长眠", 
+                "累了看看父母，倦了想想前程", "不像角马一样落后，要像野狼一样战斗", 
+                "破釜沉舟，拼他个日出日落", "细节决定成败，态度决定一切", 
+                "学如逆水行舟，不进则退", "此刻打盹，你将做梦；此刻学习，你将圆梦", 
+                "努力到无能为力，拼搏到感动自己", "醒醒！该学习了！", "沉迷学习，日渐消瘦", 
+                "博学之，审问之，慎思之，明辨之，笃行之", "书山有路勤为径，学海无涯苦作舟", 
+                "吾日三省吾身：高否？富否？帅否？否，滚去学习！", 
+                "不学习，如何养活你的众多游戏？", "稳住，我们能赢！", "学习使我妈快乐", 
+                "通往好大学的路，是用卷子铺出来的", "宁静致远", "分数就是硬道理", 
+                "别在最好的年纪，辜负了最好的自己", "你讨厌的现在，是未来的你回不去的曾经"
+            ];
+            
+            let sIdx = 0; 
+            let charIdx = 0; 
+            let currentText = ""; 
+            let isDeleting = false; 
+            const typeSpeed = 100; 
+            const backSpeed = 50; 
+            const pauseTime = 2000;
+            
+            function type() {
+                const fullText = slogans[sIdx % slogans.length];
+                if (isDeleting) { 
+                    currentText = fullText.substring(0, charIdx - 1); 
+                    charIdx--; 
+                } else { 
+                    currentText = fullText.substring(0, charIdx + 1); 
+                    charIdx++; 
+                }
+                
+                box.innerHTML = `${currentText}<span class="cursor"></span>`;
+                
+                let delta = isDeleting ? backSpeed : typeSpeed;
+                if (!isDeleting && currentText === fullText) { 
+                    delta = pauseTime; 
+                    isDeleting = true; 
+                } else if (isDeleting && currentText === "") { 
+                    isDeleting = false; 
+                    sIdx++; 
+                    delta = 500; 
+                }
+                setTimeout(type, delta);
+            }
+            type();
+        }
+    };
+
+    // --- BOOTSTRAP (启动入口) ---
+        // --- BOOTSTRAP (启动入口) ---
+    (async function() {
+        FX.init();
+        const isShare = await CloudSync.checkShareMode();
+        if (!isShare) {
+            UI.init();
+        }
+    })();
+    </script>
+</body>
+</html>
