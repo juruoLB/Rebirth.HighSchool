@@ -258,8 +258,8 @@
                     <h1 class="glitch" style="color:#ffd700;">🏆 重生者荣誉战报</h1>
                     <div style="font-size:1.2rem; margin:20px; line-height:2; border-top:1px dashed #444; border-bottom:1px dashed #444; padding:20px;">
                         <p>宿主代号：<span style="color:#2ecc71">${data.name}</span></p>
-                        <p>高考总分：<span style="color:#f1c40f">${data.score}</span></p>
-                        <p>录取院校：<span style="color:#3498db">${data.uni}</span></p>
+                        <p>${data.ending.includes('崩溃') ? '综合评价' : '高考总分'}：<span style="font-size:1.5rem; color:#f1c40f">${data.ending.includes('崩溃') ? '???' : data.score}</span></p>
+<p>${data.ending.includes('崩溃') ? '最终去向' : '录取院校'}：<span style="font-size:1.5rem; color:#3498db">${data.uni}</span></p>
                         <p>结局：${data.ending}</p>
                     </div>
                     <button class="btn" onclick="window.location.href='/'">我也要重生</button>
@@ -661,7 +661,8 @@
             if (p.stats.stress >= 100) {
                 h.crisisCount++;
                 if (p.stats.stress >= 120 || h.crisisCount >= 3) {
-                    return Engine.triggerEnding('BE1', 0);
+                    const currentPower = p.stats.iq + p.stats.logic + p.stats.mem + p.stats.img;
+                    return Engine.triggerEnding('BE1', Math.floor(currentPower / 2.0), "医院/家里蹲(休/退学)");
                 }
                 UI.log("【崩溃】本周心理防线崩塌！", "red");
                 p.stats.stress = 60; 
@@ -804,6 +805,8 @@
         },
 
         triggerEnding: function(id, score, uni) {
+            // [修复点 1] 必须在这里定义 p，否则下方发送数据会报错
+            const p = StateManager.data.player;
             StateManager.data.game.isGameOver = true;
             document.getElementById('screen-game').classList.add('hidden');
             
@@ -816,8 +819,8 @@
                 <h1 style="font-size:3rem; margin:0 0 20px 0; color:${endData.color}">${endData.title}</h1>
                 <div style="font-size:1.2rem; color:#aaa; margin-bottom:40px;">${endData.desc}</div>
                 <div style="border-top:1px dashed #666; border-bottom:1px dashed #666; padding:20px; margin-bottom:30px;">
-                    <p>高考总分: <span style="font-size:2rem; font-weight:bold; color:white">${score || "???"}</span></p>
-                    ${uni ? `<p>录取院校: <span style="font-size:1.5rem; color:#3498db">${uni}</span></p>` : ''}
+                    <p>${id === 'BE1' ? '综合能力评价' : '高考总分'}: <span style="font-size:2rem; font-weight:bold; color:white">${id === 'BE1' ? '???' : (score || "???")}</span></p>
+${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font-size:1.5rem; color:#3498db">${uni}</span></p>` : ''}
                 </div>
                 <p style="color:#666; font-size:0.8rem;">ID: ${StateManager.data.player.name} | MaxStress: ${StateManager.data.history.maxStress}</p>
                 <button class="btn" onclick="location.reload()" style="margin-top:20px; border-color:${endData.color}; color:${endData.color}">>> 再次重生 (Rebirth)</button>
