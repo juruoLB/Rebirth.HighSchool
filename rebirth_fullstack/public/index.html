@@ -100,12 +100,21 @@
             flex: 1; overflow-y: auto; font-size: 0.9rem; line-height: 1.4; 
             border-top: 1px dashed #333; margin-top: 10px; padding-top: 10px;
         }*/
-        #game-log {
-            /* 兼容 Webkit 浏览器 (Chrome/Safari) */
-            -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
-            /* 标准语法 */
-            mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        #game-log { 
+            flex: 1; 
+            overflow-y: auto; 
+            font-size: 0.9rem; 
+            line-height: 1.4; 
+            border-top: 1px dashed #333; 
+            margin-top: 10px; 
+            padding-top: 10px;
+            /* 保持你那个酷炫的渐变消失效果 */
+            -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+            /* 隐藏滚动条但保留滚动功能（可选，增加美感） */
+            scrollbar-width: none; 
         }
+        #game-log::-webkit-scrollbar { display: none; }
 
         /* [NEW] 打字机光标闪烁 */
         .cursor::after {
@@ -1116,7 +1125,18 @@ ${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font
             d.className = 'log-entry'; 
             d.style.color = c;
             d.innerHTML = `<span class="log-turn">[W${StateManager.data.game.turn}]</span> ${m}`;
-            document.getElementById('game-log').prepend(d);
+            
+            const logBox = document.getElementById('game-log');
+            logBox.prepend(d); // 新消息放最上面
+            
+            // [ACMer 优化：日志剪枝]
+            // 如果日志条数超过 40 条，移除最旧的一条（最后面的子元素）
+            if (logBox.children.length > 40) {
+                logBox.removeChild(logBox.lastChild);
+            }
+            
+            // 每次发新消息，自动回滚到最顶部，确保新消息可见
+            logBox.scrollTop = 0;
         }
     };
 
