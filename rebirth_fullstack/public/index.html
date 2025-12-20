@@ -6,10 +6,7 @@
     <title>REBIRTH_HIGHSCHOOL_V5.5.1</title>
     <style>
         /* ==================== GLOBAL THEME ==================== */
-        /* [V5.5.1 FIX] 强制保留滚动条轨道，防止页面宽度跳动 */
-        html {
-            overflow-y: scroll; 
-        }
+        /* ==================== 1. 全局皮肤定义 (基因库) ==================== */
         :root {
             --bg: #000000;
             --fg: #e0e0e0;
@@ -20,13 +17,26 @@
             --font: 'Consolas', 'Courier New', monospace;
         }
 
-        body {
-            background-color: var(--bg); color: var(--fg); font-family: var(--font);
-            margin: 0; padding: 0; height: 100vh; overflow: hidden;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        html, body {
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 禁止网页整体滚动 */
+            background-color: var(--bg);
+            color: var(--fg);
+            font-family: var(--font);
         }
 
-        /* 通用：故障文字特效 */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* ==================== 2. 通用特效与原子类 ==================== */
         .glitch {
             position: relative; animation: glitch 1s infinite alternate;
             text-shadow: 2px 2px 0px #333; font-weight: bold; letter-spacing: 2px;
@@ -35,11 +45,12 @@
             0% { text-shadow: 2px 2px 0px #333; }
             100% { text-shadow: -2px -2px 0px #333; }
         }
-
-        /* 通用：隐藏类 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .hidden { display: none !important; }
         
-        /* 通用：硬核按钮 */
         .btn {
             background: black; color: white; border: 2px solid white;
             padding: 10px 20px; font-family: inherit; font-weight: bold; cursor: pointer;
@@ -48,22 +59,13 @@
         .btn:hover:not(:disabled) { background: white; color: black; }
         .btn:disabled { border-color: #444; color: #444; cursor: not-allowed; }
 
-        /* ==================== SCREEN 1: SETUP (复刻您的最爱) ==================== */
-        #screen-setup {
-            width: 100%; max-width: 700px; height: 90vh;
-            border: var(--border); padding: 30px; box-sizing: border-box;
-            background: #050505; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 20px;
-            box-shadow: 0 0 20px rgba(255,255,255,0.1);
-        }
-
+        .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; color: var(--highlight); }
         input[type="text"] {
             background: transparent; border: none; border-bottom: 2px solid white;
             color: white; font-family: inherit; font-size: 1.2rem; width: 100%; outline: none;
         }
         
-        /* 选科 Grid */
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .option-box {
             border: 1px solid #444; padding: 15px; text-align: center; cursor: pointer; user-select: none;
@@ -71,78 +73,83 @@
         .option-box.selected, .option-box.active {
             background: white; color: black; border-color: white; font-weight: bold;
         }
-
-        /* 属性加点器 */
         .stat-allocator { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #333; padding: 5px 0; }
 
-        /* ==================== SCREEN 2: GAMEPLAY (仪表盘) ==================== */
+        /* ==================== 3. SCREEN 1: SETUP (起始页定制) ==================== */
+        #screen-setup {
+            width: 100%;
+            max-width: 700px;
+            max-height: 85vh; /* 留出一点边缘 */
+            border: var(--border);
+            padding: 30px;
+            box-sizing: border-box;
+            background: #050505;
+            overflow-y: auto; /* 允许内部滚动 */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+
+        /* 起始页滚动条美化 */
+        #screen-setup::-webkit-scrollbar { width: 6px; }
+        #screen-setup::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        /* ==================== 4. SCREEN 2: GAMEPLAY (仪表盘锁定) ==================== */
         #screen-game {
-            width: 100%; height: 100%; display: flex; gap: 10px; padding: 10px; box-sizing: border-box;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden;
         }
         
         .panel { 
-            border: 1px solid #333; background: #0a0a0a; padding: 10px; 
+            border: 1px solid #333; background: #0a0a0a; padding: 15px; 
             display: flex; flex-direction: column;
+            height: 100%; box-sizing: border-box;
+            overflow: hidden;
         }
         
-        /* 左侧状态 (30%) */
         #col-stats { flex: 3; }
-        /* 中间日志 (40%) */
-        #col-main { flex: 4; border-color: #666; } /* 主屏边框亮一点 */
-        /* 右侧操作 (30%) */
+        #col-main { flex: 4; border-color: #666; }
         #col-action { flex: 3; }
 
+        /* 日志核心：不撑开页面的黑魔法 */
+        #game-log {
+            flex: 1;
+            min-height: 0; /* 允许 Flex 子项收缩 */
+            overflow-y: auto;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #333;
+            display: flex;
+            flex-direction: column;
+            -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+        #game-log::-webkit-scrollbar { display: none; }
+
+        /* ==================== 5. 游戏内小组件 (状态条等) ==================== */
         .stat-bar { margin-bottom: 12px; }
         .progress-track { background: #222; height: 10px; border: 1px solid #444; margin-top: 4px; }
         .progress-fill { height: 100%; background: #fff; width: 50%; transition: width 0.3s; }
         
-        /*#game-log { 
-            flex: 1; overflow-y: auto; font-size: 0.9rem; line-height: 1.4; 
-            border-top: 1px dashed #333; margin-top: 10px; padding-top: 10px;
-        }*/
-        #game-log { 
-            flex: 1; 
-            overflow-y: auto; 
-            font-size: 0.9rem; 
-            line-height: 1.4; 
-            border-top: 1px dashed #333; 
-            margin-top: 10px; 
-            padding-top: 10px;
-            /* 保持你那个酷炫的渐变消失效果 */
-            -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-            mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-            /* 隐藏滚动条但保留滚动功能（可选，增加美感） */
-            scrollbar-width: none; 
-        }
-        #game-log::-webkit-scrollbar { display: none; }
-
-        /* [NEW] 打字机光标闪烁 */
         .cursor::after {
-            content: '|';
-            display: inline-block;
-            margin-left: 2px;
-            animation: blink 1s step-end infinite;
-            color: #2ecc71; /* 光标设为绿色，像老式终端 */
+            content: '|'; display: inline-block; margin-left: 2px;
+            animation: blink 1s step-end infinite; color: #2ecc71;
         }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         
-        /* 标语容器样式 */
         #slogan-box {
-            margin-top: auto; /* 推到底部 */
-            padding-top: 20px;
-            border-top: 1px solid #333;
-            font-family: 'SimSun', 'Songti SC', serif; /* 宋体更有学校标语的感觉 */
-            font-size: 0.9rem;
-            color: #aaa;
-            min-height: 60px; /* 预留高度防止跳动 */
-            line-height: 1.5;
-            font-style: italic;
+            margin-top: auto; padding-top: 20px; border-top: 1px solid #333;
+            font-family: 'SimSun', 'Songti SC', serif; font-size: 0.9rem;
+            color: #aaa; min-height: 60px; line-height: 1.5; font-style: italic;
         }
-        .log-entry { margin-bottom: 5px; }
+        .log-entry { margin-bottom: 5px; animation: fadeIn 0.3s ease-out; }
         .log-turn { color: #888; margin-right: 5px; }
+
     </style>
 </head>
 <body>
@@ -215,7 +222,7 @@
                 <span id="ui-turn" style="background: white; color: black; padding: 2px 6px; font-weight: bold;">TURN 1/48</span>
             </div>
             <div style="border-bottom: 1px solid #333; margin: 10px 0; padding-bottom: 5px; text-align: center;">
-                <span id="ui-school">LOADING...</span> | 距离高考 <span id="ui-countdown">48</span> 周
+                <span id="ui-school">LOADING...</span> | 距离高考 <span id="ui-countdown">48</span> 回合
             </div>
             <div id="game-log">
                 <!-- 日志流 -->
@@ -551,6 +558,13 @@
        MODULE 3: ENGINE (逻辑核心)
        ----------------------------------------------------------------- */
     const Engine = {
+        // [v6.5.0 NEW] 获取当前回合的体力上限
+        getCurrentMaxStamina: function() {
+            const p = StateManager.data.player;
+            const g = StateManager.data.game;
+            // 如果是假期，上限 200，否则跟随初始天赋 maxStamina (通常是100)
+            return GameConfig.Calendar.holidays.includes(g.turn) ? p.stats.maxStamina * 2 : p.stats.maxStamina;
+        },
         getSchoolConfig: function() { 
             const k = StateManager.data.player.schoolKey; 
             return GameConfig.Schools[k.tier][k.style]; 
@@ -591,7 +605,7 @@
             UI.renderGame();
         },
 
-        doRest: function(type) {
+        /*doRest: function(type) {
             const p = StateManager.data.player;
             if (type === 'nap') {
                 if (p.stats.time < 10) return UI.log("没时间打盹了！", "red");
@@ -612,6 +626,34 @@
                 p.stats.stress = Math.max(0, p.stats.stress - 40);
                 UI.log("娱乐: 压力大幅下降", "yellow");
             }
+            UI.renderGame();
+        },*/
+        doRest: function(type) {
+            const p = StateManager.data.player;
+            const currentMax = Engine.getCurrentMaxStamina(); // 获取当前天花板
+
+            if (type === 'nap') {
+                if (p.stats.time < 10) return UI.log("没时间打盹了！", "red");
+                p.stats.time -= 10; 
+                // 修改：打盹回复不能超过当前上限
+                p.stats.stamina = Math.min(currentMax, p.stats.stamina + 10); 
+                p.stats.stress = Math.max(0, p.stats.stress - 2);
+                UI.log("打盹: 体力+10, 时间-10", "green");
+            } else if (type === 'sleep') {
+                if (p.stats.time < 80) return UI.log("时间不够深睡！", "red");
+                p.stats.time -= 80; 
+                // 核心修改：睡觉直接填满当前上限，不再是死板的 200
+                p.stats.stamina = currentMax; 
+                p.stats.stress = Math.max(0, p.stats.stress - 25);
+                UI.log(`深度睡眠: 精力充沛! (回复至${currentMax})`, "#2ecc71");
+            } else if (type === 'play') {
+                if (p.stats.time < 50) return UI.log("没时间玩了！", "red");
+                p.stats.time -= 50; 
+                p.stats.stamina -= 10; 
+                p.stats.stress = Math.max(0, p.stats.stress - 40);
+                UI.log("娱乐: 压力大幅下降", "yellow");
+            }
+            
             UI.renderGame();
         },
 
@@ -673,7 +715,7 @@
                     const currentPower = p.stats.iq + p.stats.logic + p.stats.mem + p.stats.img;
                     return Engine.triggerEnding('BE1', Math.floor(currentPower / 2.0), "医院/家里蹲(休/退学)");
                 }
-                UI.log("【崩溃】本周心理防线崩塌！", "red");
+                UI.log("【崩溃】本回合心理防线崩塌！", "red");
                 p.stats.stress = 60; 
                 p.stats.time = 0;
             }
@@ -685,8 +727,14 @@
                 Engine.triggerExam(g.turn, school);
             }
 
-            // 4. 下一周
+            // 4. 下一回合
             g.turn++;
+            // [数值对齐] 检查开学后的体力溢出
+            const nextMax = Engine.getCurrentMaxStamina();
+            if (p.stats.stamina > nextMax) {
+                p.stats.stamina = nextMax;
+                UI.log("假期结束，体力回归正常水平。", "#aaa");
+            }
 
             if (g.turn === 17 || g.turn === 33) {
                 UI.log(`========== 新学年开始 ==========`, "cyan");
@@ -706,7 +754,7 @@
                 } else {
                     p.stats.time = GameConfig.TIME_PER_TURN; 
                     p.stats.stamina = Math.min(100, p.stats.stamina + 20);
-                    UI.log(`>>> 进入第 ${g.turn} 周。`, "#aaa");
+                    UI.log(`>>> 进入第 ${g.turn} 回合。`, "#aaa");
                 }
                 StateManager.save();
                 UI.renderGame();
@@ -956,7 +1004,7 @@ ${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font
             const nextBtn = document.createElement('button');
             nextBtn.className = 'btn'; 
             nextBtn.style = "width:100%; margin-bottom:10px; border-color:#9b59b6; color:#9b59b6";
-            nextBtn.innerText = ">> 结束本周 >>"; 
+            nextBtn.innerText = ">> 结束本回合 >>"; 
             nextBtn.onclick = () => Engine.passTurn();
             actBox.appendChild(nextBtn);
 
@@ -1121,22 +1169,29 @@ ${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font
         },
 
         log: function(m, c = "white") {
+            const logBox = document.getElementById('game-log');
+            if (!logBox) return;
+
+            // 1. 创建新条目
             let d = document.createElement('div'); 
             d.className = 'log-entry'; 
             d.style.color = c;
-            d.innerHTML = `<span class="log-turn">[W${StateManager.data.game.turn}]</span> ${m}`;
-            
-            const logBox = document.getElementById('game-log');
-            logBox.prepend(d); // 新消息放最上面
-            
-            // [ACMer 优化：日志剪枝]
-            // 如果日志条数超过 40 条，移除最旧的一条（最后面的子元素）
-            if (logBox.children.length > 40) {
+            d.style.marginBottom = "8px"; // 增加一点间距
+            d.style.animation = "fadeIn 0.3s ease-out"; // 增加一个简单的淡入动画
+            d.innerHTML = `<span class="log-turn" style="color:#666; margin-right:8px;">[W${StateManager.data.game.turn}]</span> ${m}`;
+    
+            // 2. 将新条目插入到最顶端
+            logBox.prepend(d); 
+    
+            // 3. 【队列管理】严格控制 DOM 数量 (O(1) 级的渲染开销)
+            // 建议保留 50 条，既方便回看，又不会撑爆内存
+            while (logBox.children.length > 50) {
                 logBox.removeChild(logBox.lastChild);
             }
-            
-            // 每次发新消息，自动回滚到最顶部，确保新消息可见
-            logBox.scrollTop = 0;
+    
+            // 4. 【强制锚定顶部】
+            // 确保每次有新消息时，滚动条都瞬间回到最上面
+            logBox.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
@@ -1258,7 +1313,7 @@ ${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font
             
             const sc = GameConfig.Schools[this.curSchoolTier][this.curSchoolStyle];
             document.getElementById('school-desc').innerText = 
-                `[${sc.buff}] 效率:${sc.eff} | 压力:${sc.stress}/周 | 及格线:${sc.minScore}`;
+                `[${sc.buff}] 效率:${sc.eff} | 压力:${sc.stress}/回合 | 及格线:${sc.minScore}`;
 
             // 3. 选科
             this.renderDOM('sub-select', GameConfig.Subjects, (key) => {
@@ -1378,7 +1433,7 @@ ${uni ? `<p>${id === 'BE1' ? '当前状态' : '录取院校'}: <span style="font
             document.getElementById('screen-setup').classList.add('hidden');
             document.getElementById('screen-game').classList.remove('hidden');
             UI.renderGame();
-            UI.log("系统启动成功。V5.5.3 Final Fixed.");
+            UI.log("系统启动成功。V6.3.0 Final Fixed.");
         }
     }; 
 
